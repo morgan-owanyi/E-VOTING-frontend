@@ -42,9 +42,6 @@ const Register: React.FC = () => {
           <div>
             <a href="/" className="nav-link d-inline" style={{ marginRight: 25 }}>Home</a>
             <a href="/login" className="nav-link d-inline" style={{ marginRight: 25 }}>Login</a>
-            <a href="/register" className="btn btn-primary" style={{ marginLeft: 10, borderRadius: 6 }}>
-              Register &rarr;
-            </a>
           </div>
         </div>
       </nav>
@@ -65,6 +62,10 @@ const Register: React.FC = () => {
             <div className="mb-3">
               <label className="form-label">Registration number</label>
               <input type="text" className="form-control" placeholder="Enter registration number" required />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Program</label>
+              <input type="text" className="form-control" placeholder="Enter your program here" required />
             </div>
             <div className="mb-3">
               <label className="form-label">Password</label>

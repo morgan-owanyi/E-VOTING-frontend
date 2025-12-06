@@ -19,7 +19,7 @@ const Home: React.FC = () => (
         <div>
           <Link to="/" className="nav-link d-inline" style={{ marginRight: 25 }}>Home</Link>
           <Link to="/register" className="nav-link d-inline" style={{ marginRight: 25 }}>Register</Link>
-          <Link to="/login" className="btn btn-primary" style={{ marginLeft: 10, borderRadius: 6 }}>Admin &rarr;</Link>
+          <Link to="/login" className="btn btn-primary ms-2" style={{ borderRadius: 6 }}>Login</Link>
         </div>
       </div>
     </nav>
@@ -30,10 +30,9 @@ const Home: React.FC = () => (
             <h1 style={{fontWeight: 600, fontSize: 38}}>
               Letting your vote<br/><span style={{ color: "#18605e" }}>be heard</span>
             </h1>
-            <Link to="/login" className="btn" style={{
+            <Link to="/login" className="btn mt-4" style={{
               background: "#243b5c", color: "white", fontWeight: 500, fontSize: 22,
-              paddingLeft: 50, paddingRight: 50, paddingTop: 10, paddingBottom: 10,
-              borderRadius: 7, marginTop: 35
+              padding: "10px 50px", borderRadius: 7
             }}>Login</Link>
           </div>
         </div>

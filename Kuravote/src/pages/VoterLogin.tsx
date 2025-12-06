@@ -2,7 +2,7 @@ import React, { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/kuravote-black.png";
 import bg from "../assets/vote_bg.jpg";
-import voteicon from "../assets/vote.png"; // Use vote icon for OTP card
+import voteicon from "../assets/elections.png"; // Use vote icon for OTP card
 import candidate1 from "../assets/candidate1.jpg";
 // Add more candidate images as needed
 
@@ -86,10 +86,6 @@ export default function VoterLogin() {
               </span>
             </div>
           </div>
-          <div>
-            <a href="/" className="nav-link d-inline" style={{ marginRight: 20 }}>Home</a>
-            <a href="/login" className="nav-link d-inline" style={{ marginRight: 20 }}>Login</a>
-          </div>
         </div>
       </nav>
 
@@ -163,44 +159,49 @@ export default function VoterLogin() {
             borderRadius: 28,
             boxShadow: "0 2px 24px #00000013",
             padding: "3rem 2rem 2rem 2rem",
+            display: "flex",
+            flexDirection: "column",
+            minHeight: "calc(100vh - 200px)"
           }}>
-            <h3 className="text-center mb-4">Cast your vote</h3>
-            <div className="row">
-              {positionGroups.map(group => (
-                <div className="col-md-6 mb-4" key={group.position}>
-                  <div className="card" style={{ borderRadius: 18 }}>
-                    <div className="card-header text-center fw-bold fs-4" style={{ borderRadius: 18, background: "#f6f8fa" }}>{group.position}</div>
-                    <div className="card-body">
-                      <div className="row justify-content-center">
-                        {group.candidates.map(cand => (
-                          <div className="col-12 text-center mb-3" key={cand.id}>
-                            <div className="fw-semibold mb-2">{cand.name}</div>
-                            <img src={cand.img} alt={cand.name} style={{
-                              width: 180, height: 130,
-                              objectFit: "cover", borderRadius: 9,
-                              border: "1px solid #e3e8ef"
-                            }} />
-                            <button
-                              className="btn btn-primary w-75 mt-3"
-                              style={{ background: "#1477cb", fontWeight: 600, fontSize: 18 }}
-                              disabled={!!selectedVotes[group.position]}
-                              onClick={() => {
-                                handleVote(group.position, cand.id);
-                                setTimeout(handleSessionEnd, 1000); // Simulate quick end after voting
-                              }}
-                            >
-                              &#10003; Vote
-                            </button>
-                          </div>
-                        ))}
+            <div style={{ flex: 1 }}>
+              <h3 className="text-center mb-4">Cast your vote</h3>
+              <div className="row">
+                {positionGroups.map(group => (
+                  <div className="col-md-6 mb-4" key={group.position}>
+                    <div className="card" style={{ borderRadius: 18 }}>
+                      <div className="card-header text-center fw-bold fs-4" style={{ borderRadius: "18px 18px 0 0", background: "#f6f8fa" }}>{group.position}</div>
+                      <div className="card-body">
+                        <div className="row justify-content-center">
+                          {group.candidates.map(cand => (
+                            <div className="col-6 text-center mb-3" key={cand.id}>
+                              <div className="fw-semibold mb-2">{cand.name}</div>
+                              <img src={cand.img} alt={cand.name} style={{
+                                width: "100%", maxWidth: 180, height: 130,
+                                objectFit: "cover", borderRadius: 9,
+                                border: "1px solid #e3e8ef"
+                              }} />
+                              <button
+                                className="btn btn-primary w-100 mt-3"
+                                style={{ background: "#1477cb", fontWeight: 600, fontSize: 16 }}
+                                disabled={!!selectedVotes[group.position]}
+                                onClick={() => {
+                                  handleVote(group.position, cand.id);
+                                  setTimeout(handleSessionEnd, 1000);
+                                }}
+                              >
+                                &#10003; Vote
+                              </button>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-            <footer className="text-center text-white pt-3" style={{ background: "#189092", borderRadius: "0 0 28px 28px", marginTop: 36, height: 50 }}>
-              <div style={{fontSize: 16, paddingTop: 12}}>© Copyright 2025 | All Rights Reserved.</div>
+            <footer className="text-center text-white" style={{ background: "#189092", borderRadius: "0 0 28px 28px", padding: "16px 0", marginTop: "auto" }}>
+              <div style={{fontSize: 14}}>© Copyright 2025 | All Rights Reserved.</div>
             </footer>
           </div>
         )}
