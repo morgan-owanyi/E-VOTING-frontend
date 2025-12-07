@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Configure your Django backend URL here
 // Django default port is 8000
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://e-voting-backend-5087.onrender.com/api';
 
 // Create axios instance with default config
 const api = axios.create({
