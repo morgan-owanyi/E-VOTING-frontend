@@ -51,6 +51,17 @@ export default function AdminDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentElection]);
 
+  // Real-time vote updates every 5 seconds when viewing analytics
+  useEffect(() => {
+    if (currentElection && activeTab === 'analytics') {
+      const interval = setInterval(() => {
+        fetchVoters(); // Updates total votes cast in real-time
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentElection, activeTab]);
+
   const fetchElections = async () => {
     try {
       const response = await axios.get('/elections/');
@@ -282,18 +293,76 @@ export default function AdminDashboard() {
   const voterTurnoutRate = eligibleVoters > 0 ? ((totalVotesCast / eligibleVoters) * 100).toFixed(1) : '0.0';
   const votingPercentage = eligibleVoters > 0 ? ((totalVotesCast / eligibleVoters) * 100).toFixed(1) : '0.0';
 
-  const downloadAuditLog = () => {
-    // In production, fetch audit logs from backend
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + "Timestamp,Action,User,Details\n"
-      + "No audit logs available";
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `audit_log_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const exportResultsCSV = async () => {
+    if (!currentElection) return;
+    try {
+      const response = await axios.get(`/voting/export_results_csv/?election=${currentElection.id}`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `results_${currentElection.title}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      alert('Failed to export results');
+    }
+  };
+
+  const exportResultsPDF = async () => {
+    if (!currentElection) return;
+    try {
+      const response = await axios.get(`/voting/export_results_pdf/?election=${currentElection.id}`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `results_${currentElection.title}_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      alert('Failed to export results PDF');
+    }
+  };
+
+  const exportTurnoutCSV = async () => {
+    if (!currentElection) return;
+    try {
+      const response = await axios.get(`/voting/export_turnout_csv/?election=${currentElection.id}`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `turnout_${currentElection.title}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      alert('Failed to export turnout');
+    }
+  };
+
+  const exportAuditLogCSV = async () => {
+    if (!currentElection) return;
+    try {
+      const response = await axios.get(`/voting/export_audit_log_csv/?election=${currentElection.id}`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `audit_log_${currentElection.title}_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      alert('Failed to export audit log');
+    }
   };
 
   return (
@@ -464,34 +533,55 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            {/* Export Results Section */}
+            <div className="mb-4">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h4 className="fw-bold">Election Results</h4>
+                <div className="d-flex gap-2">
+                  <button className="btn btn-success" onClick={exportResultsCSV}>
+                    Export CSV
+                  </button>
+                  <button className="btn btn-danger" onClick={exportResultsPDF}>
+                    Export PDF
+                  </button>
+                </div>
+              </div>
+              <div className="card" style={{ borderRadius: 18, padding: "20px" }}>
+                <p className="text-muted">
+                  Click the export buttons above to download election results.
+                  <br />
+                  Results update in real-time as votes are cast.
+                </p>
+              </div>
+            </div>
+
+            {/* Export Turnout Section */}
+            <div className="mb-4">
+              <div className="d-flex justify-content-between align-items-center mb-3">
+                <h4 className="fw-bold">Voter Turnout</h4>
+                <button className="btn btn-primary" onClick={exportTurnoutCSV}>
+                  Export Turnout CSV
+                </button>
+              </div>
+              <div className="card" style={{ borderRadius: 18, padding: "20px" }}>
+                <p className="text-muted">
+                  Export detailed turnout data including voter registration numbers, voting status, and timestamps.
+                </p>
+              </div>
+            </div>
+
             {/* Audit Log */}
             <div className="mb-4">
               <div className="d-flex justify-content-between align-items-center mb-3">
                 <h4 className="fw-bold">Full Audit Log</h4>
-                <button className="btn btn-primary" onClick={downloadAuditLog}>
-                  Download CSV
+                <button className="btn btn-primary" onClick={exportAuditLogCSV}>
+                  Download Audit Log CSV
                 </button>
               </div>
               <div className="card" style={{ borderRadius: 18, padding: "20px" }}>
-                <div className="table-responsive">
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>Timestamp</th>
-                        <th>Action</th>
-                        <th>User</th>
-                        <th>Details</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td colSpan={4} className="text-center text-muted py-4">
-                          No audit logs available. This feature will be implemented in a future update.
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                <p className="text-muted">
+                  Download complete audit trail of all election activities including vote casts, voter additions, and administrative actions.
+                </p>
               </div>
             </div>
           </>
