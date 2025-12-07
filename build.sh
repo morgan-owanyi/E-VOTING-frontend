@@ -2,6 +2,6 @@
 # exit on error
 set -o errexit
 
-cd Kuravote
+cd kuravote
 npm install --legacy-peer-deps
 npm run build
