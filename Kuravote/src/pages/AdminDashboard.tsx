@@ -204,8 +204,11 @@ export default function AdminDashboard() {
   const handleSubmitOfficer = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Generate username from name (remove spaces and special chars)
+      const username = newOfficer.name.replace(/\s+/g, '').toLowerCase() + Math.floor(Math.random() * 1000);
+      
       await axios.post('/auth/register/', {
-        username: newOfficer.email.split('@')[0],
+        username: username,
         email: newOfficer.email,
         password: newOfficer.password,
         first_name: newOfficer.name,
@@ -213,7 +216,7 @@ export default function AdminDashboard() {
       });
       
       // Show password to admin
-      alert(`Officer created!\n\nEmail: ${newOfficer.email}\nTemporary Password: ${newOfficer.password}\n\nPlease save these credentials.`);
+      alert(`Officer created!\n\nName: ${newOfficer.name}\nEmail: ${newOfficer.email}\nTemporary Password: ${newOfficer.password}\n\nPlease save these credentials and share with the officer.`);
       
       setOfficers([...officers, {
         id: `o${officers.length + 1}`,
@@ -223,7 +226,14 @@ export default function AdminDashboard() {
       }]);
       handleCloseOfficerModal();
     } catch (err: any) {
-      alert(err.response?.data?.message || err.response?.data?.email?.[0] || 'Failed to create officer');
+      const errorMsg = err.response?.data?.username?.[0] 
+        || err.response?.data?.email?.[0] 
+        || err.response?.data?.password?.[0]
+        || err.response?.data?.message 
+        || err.message 
+        || 'Failed to create officer';
+      alert('Failed to create officer: ' + errorMsg);
+      console.error('Officer creation error:', err.response?.data);
     }
   };
 
