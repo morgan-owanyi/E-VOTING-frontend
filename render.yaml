@@ -2,11 +2,12 @@ services:
   - type: web
     name: kuravote-frontend
     runtime: node
-    buildCommand: cd kuravote && npm install --legacy-peer-deps && npm run build
-    staticPublishPath: kuravote/build
+    buildCommand: npm install --legacy-peer-deps && npm run build
+    staticPublishPath: build
+    rootDirectory: Kuravote
     envVars:
       - key: NODE_VERSION
-        value: 18
+        value: 20
     routes:
       - type: rewrite
         source: /*
