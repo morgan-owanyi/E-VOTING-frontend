@@ -96,7 +96,7 @@ export default function AdminDashboard() {
   };
 
   // Add voter logic
-  const handleAddSingle = async (regNo: string) => {
+  const handleAddSingle = async (regNo: string, email: string) => {
     if (!currentElection) {
       alert('Please create an election first');
       return;
@@ -104,7 +104,8 @@ export default function AdminDashboard() {
     try {
       await axios.post('/voters/', {
         election: currentElection.id,
-        registration_number: regNo
+        registration_number: regNo,
+        email: email
       });
       fetchVoters();
     } catch (err: any) {

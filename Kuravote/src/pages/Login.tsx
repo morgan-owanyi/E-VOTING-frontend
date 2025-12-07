@@ -99,7 +99,7 @@ export default function Login() {
       
       // Check if voter is not eligible
       if (err.response?.status === 404 || errorMessage?.toLowerCase().includes('not found') || errorMessage?.toLowerCase().includes('not eligible')) {
-        setError("You are currently not eligible to vote. Eligible voters are uploaded by the admin via CSV file or single input.");
+        setError("You are currently not eligible to vote.");
       } else {
         setError(errorMessage || "Failed to request OTP");
       }

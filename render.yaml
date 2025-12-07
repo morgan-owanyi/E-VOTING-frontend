@@ -10,6 +10,8 @@ services:
         value: 20
       - key: NPM_CONFIG_LEGACY_PEER_DEPS
         value: true
+      - key: REACT_APP_API_URL
+        value: https://e-voting-backend-5087.onrender.com/api
     routes:
       - type: rewrite
         source: /*
