@@ -48,7 +48,7 @@ export default function Login() {
         voter: "VOTER"
       };
 
-      const response = await authAPI.login({
+      await authAPI.login({
         email,
         password,
         role: roleMap[role]

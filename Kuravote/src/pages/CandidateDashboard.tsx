@@ -103,17 +103,13 @@ export default function CandidateDashboard() {
         },
       });
 
-      alert('Application submitted successfully! Awaiting officer approval.');
+      alert('Application submitted successfully! Awaiting officer approval. You will be logged out.');
       
-      // Reset form
-      setSelectedPosition("");
-      setProgram("");
-      setMessage("");
-      setProfilePhoto(null);
-      setManifesto(null);
-      setDocuments(null);
-      const form = e.target as HTMLFormElement;
-      form.reset();
+      // Clear auth data and redirect to home
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userEmail');
+      navigate('/');
     } catch (err: any) {
       setError(err.response?.data?.message || err.response?.data?.detail || 'Failed to submit application');
     } finally {
