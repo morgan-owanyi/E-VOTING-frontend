@@ -1,25 +1,23 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/kuravote-black.png";
 import AddVoter from "./AddVoter";
-
-// Demo position data
-const defaultPositions: any[] = [];
-
-const defaultOfficers: any[] = [];
-
-const auditLogs: any[] = [];
+import axios from "../utils/api";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"positions" | "analytics">("positions");
-  const [positions, setPositions] = useState(defaultPositions);
+  const [positions, setPositions] = useState<any[]>([]);
+  const [elections, setElections] = useState<any[]>([]);
+  const [currentElection, setCurrentElection] = useState<any>(null);
   const [eligibleVoters, setEligibleVoters] = useState<number>(0);
-  const totalVotesCast = 0;
-  const [officers, setOfficers] = useState(defaultOfficers);
+  const [totalVotesCast, setTotalVotesCast] = useState<number>(0);
+  const [officers, setOfficers] = useState<any[]>([]);
   const [showPositionModal, setShowPositionModal] = useState(false);
   const [showOfficerModal, setShowOfficerModal] = useState(false);
   const [showElectionModal, setShowElectionModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [newPosition, setNewPosition] = useState({
     title: "",
     description: "",
@@ -29,10 +27,11 @@ export default function AdminDashboard() {
   });
   const [newOfficer, setNewOfficer] = useState({
     name: "",
-    email: ""
+    email: "",
+    password: ""
   });
   const [newElection, setNewElection] = useState({
-    name: "",
+    title: "",
     description: "",
     nominationStartDate: "",
     nominationEndDate: "",
@@ -40,9 +39,96 @@ export default function AdminDashboard() {
     electionEndDate: ""
   });
 
+  // Fetch data on component mount
+  useEffect(() => {
+    fetchElections();
+    fetchOfficers();
+  }, []);
+
+  useEffect(() => {
+    if (currentElection) {
+      fetchPositions();
+      fetchVoters();
+    }
+  }, [currentElection]);
+
+  const fetchElections = async () => {
+    try {
+      const response = await axios.get('/elections/');
+      setElections(response.data);
+      if (response.data.length > 0) {
+        setCurrentElection(response.data[0]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch elections:', err);
+    }
+  };
+
+  const fetchPositions = async () => {
+    if (!currentElection) return;
+    try {
+      const response = await axios.get(`/positions/?election=${currentElection.id}`);
+      setPositions(response.data);
+    } catch (err) {
+      console.error('Failed to fetch positions:', err);
+    }
+  };
+
+  const fetchVoters = async () => {
+    if (!currentElection) return;
+    try {
+      const response = await axios.get(`/voters/?election=${currentElection.id}`);
+      setEligibleVoters(response.data.length);
+      const voted = response.data.filter((v: any) => v.has_voted).length;
+      setTotalVotesCast(voted);
+    } catch (err) {
+      console.error('Failed to fetch voters:', err);
+    }
+  };
+
+  const fetchOfficers = async () => {
+    try {
+      // Fetch users with PRESIDING_OFFICER role
+      const response = await axios.get('/auth/user/');
+      // For now, just set empty array - we need a proper endpoint to list all officers
+      setOfficers([]);
+    } catch (err) {
+      console.error('Failed to fetch officers:', err);
+    }
+  };
+
   // Add voter logic
-  const handleAddSingle = (regNo: string) => setEligibleVoters(v => v + 1);
-  const handleImportCSV = (regNos: string[]) => setEligibleVoters(v => v + regNos.length);
+  const handleAddSingle = async (regNo: string) => {
+    if (!currentElection) {
+      alert('Please create an election first');
+      return;
+    }
+    try {
+      await axios.post('/voters/', {
+        election: currentElection.id,
+        registration_number: regNo
+      });
+      fetchVoters();
+    } catch (err: any) {
+      alert('Failed to add voter: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleImportCSV = async (regNos: string[]) => {
+    if (!currentElection) {
+      alert('Please create an election first');
+      return;
+    }
+    try {
+      await axios.post('/voters/bulk_create/', {
+        election: currentElection.id,
+        voters: regNos
+      });
+      fetchVoters();
+    } catch (err: any) {
+      alert('Failed to import voters: ' + (err.response?.data?.message || err.message));
+    }
+  };
 
   // Position handlers
   const handleOpenPositionModal = () => setShowPositionModal(true);
@@ -51,20 +137,29 @@ export default function AdminDashboard() {
     setNewPosition({ title: "", description: "", numberOfPeople: "", duration: "", caution: "" });
   };
 
-  const handleSubmitPosition = (e: React.FormEvent) => {
+  const handleSubmitPosition = async (e: React.FormEvent) => {
     e.preventDefault();
-    const position = {
-      id: `p${positions.length + 1}`,
-      name: newPosition.title,
-      description: newPosition.description,
-      candidatesApproved: 0,
-      candidatesTotal: parseInt(newPosition.numberOfPeople) || 0,
-      status: "open",
-      duration: newPosition.duration,
-      caution: newPosition.caution
-    };
-    setPositions([...positions, position]);
-    handleClosePositionModal();
+    if (!currentElection) {
+      alert('Please create an election first');
+      return;
+    }
+    setLoading(true);
+    try {
+      await axios.post('/positions/', {
+        election: currentElection.id,
+        title: newPosition.title,
+        description: newPosition.description,
+        number_of_people: parseInt(newPosition.numberOfPeople) || 1,
+        duration: newPosition.duration,
+        caution: newPosition.caution
+      });
+      fetchPositions();
+      handleClosePositionModal();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to create position');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = () => {
@@ -75,45 +170,57 @@ export default function AdminDashboard() {
     navigate('/');
   };
 
-  const handleDeletePosition = (id: string) => {
+  const handleDeletePosition = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this position?")) {
-      setPositions(positions.filter(pos => pos.id !== id));
+      try {
+        await axios.delete(`/positions/${id}/`);
+        fetchPositions();
+      } catch (err: any) {
+        alert('Failed to delete position: ' + (err.response?.data?.message || err.message));
+      }
     }
   };
 
   // Officer handlers
-  const handleOpenOfficerModal = () => setShowOfficerModal(true);
-  const handleCloseOfficerModal = () => {
-    setShowOfficerModal(false);
-    setNewOfficer({ name: "", email: "" });
+  const handleOpenOfficerModal = () => {
+    // Generate temp password
+    const tempPassword = 'Officer' + Math.random().toString(36).slice(-8);
+    setNewOfficer({ name: "", email: "", password: tempPassword });
+    setShowOfficerModal(true);
   };
 
-  const handleSubmitOfficer = (e: React.FormEvent) => {
+  const handleCloseOfficerModal = () => {
+    setShowOfficerModal(false);
+    setNewOfficer({ name: "", email: "", password: "" });
+  };
+
+  const handleSubmitOfficer = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Generate a temporary password
-    const tempPassword = 'Officer' + Math.random().toString(36).slice(-8);
-    
-    const officer = {
-      id: `o${officers.length + 1}`,
-      name: newOfficer.name,
-      email: newOfficer.email,
-      assignedDate: new Date().toISOString().split('T')[0],
-      status: "active"
-    };
-    setOfficers([...officers, officer]);
-    
-    // Show credentials to admin (in production, this would send an email)
-    alert(
-      `Returning Officer Created Successfully!\n\n` +
-      `Name: ${newOfficer.name}\n` +
-      `Email: ${newOfficer.email}\n` +
-      `Temporary Password: ${tempPassword}\n\n` +
-      `IMPORTANT: Share these credentials with the officer.\n` +
-      `In production, an email will be sent automatically with login instructions.`
-    );
-    
-    handleCloseOfficerModal();
+    setLoading(true);
+    try {
+      await axios.post('/auth/register/', {
+        username: newOfficer.email.split('@')[0],
+        email: newOfficer.email,
+        password: newOfficer.password,
+        first_name: newOfficer.name,
+        role: 'PRESIDING_OFFICER'
+      });
+      
+      // Show password to admin
+      alert(`Officer created!\n\nEmail: ${newOfficer.email}\nTemporary Password: ${newOfficer.password}\n\nPlease save these credentials.`);
+      
+      setOfficers([...officers, {
+        id: `o${officers.length + 1}`,
+        name: newOfficer.name,
+        email: newOfficer.email,
+        tempPassword: newOfficer.password
+      }]);
+      handleCloseOfficerModal();
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.response?.data?.email?.[0] || 'Failed to create officer');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDismissOfficer = (id: string) => {
@@ -122,58 +229,86 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleResetPassword = (officer: any) => {
+    const newPassword = 'Officer' + Math.random().toString(36).slice(-8);
+    alert(
+      `Password Reset for ${officer.name}\n\n` +
+      `Email: ${officer.email}\n` +
+      `New Temporary Password: ${newPassword}\n\n` +
+      `Please share this with the officer.`
+    );
+  };
+
   // Election handlers
   const handleOpenElectionModal = () => setShowElectionModal(true);
   const handleCloseElectionModal = () => {
     setShowElectionModal(false);
-    setNewElection({ 
-      name: "", 
-      description: "", 
-      nominationStartDate: "", 
-      nominationEndDate: "", 
-      electionStartDate: "", 
-      electionEndDate: "" 
+    setNewElection({
+      title: "",
+      description: "",
+      nominationStartDate: "",
+      nominationEndDate: "",
+      electionStartDate: "",
+      electionEndDate: ""
     });
   };
 
-  const handleSubmitElection = (e: React.FormEvent) => {
+  const handleSubmitElection = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation
+    // Validate dates
     const nomStart = new Date(newElection.nominationStartDate);
     const nomEnd = new Date(newElection.nominationEndDate);
     const elecStart = new Date(newElection.electionStartDate);
     const elecEnd = new Date(newElection.electionEndDate);
-
-    if (nomEnd <= nomStart) {
-      alert("Nomination end date must be after start date");
+    
+    if (nomStart >= nomEnd) {
+      setError("Nomination end date must be after start date");
       return;
     }
-    if (elecStart <= nomEnd) {
-      alert("Election start date must be after nomination period ends");
+    
+    if (elecStart >= elecEnd) {
+      setError("Election end date must be after start date");
       return;
     }
-    if (elecEnd <= elecStart) {
-      alert("Election end date must be after start date");
+    
+    if (nomEnd >= elecStart) {
+      setError("Election start date must be after nomination end date");
       return;
     }
-
-    alert(
-      `Election "${newElection.name}" created successfully!\n\n` +
-      `Nomination Period: ${newElection.nominationStartDate} to ${newElection.nominationEndDate}\n` +
-      `Election Period: ${newElection.electionStartDate} to ${newElection.electionEndDate}`
-    );
-    handleCloseElectionModal();
+    
+    setLoading(true);
+    setError("");
+    
+    try {
+      const response = await axios.post('/elections/', {
+        title: newElection.title,
+        description: newElection.description,
+        nomination_start_date: newElection.nominationStartDate,
+        nomination_end_date: newElection.nominationEndDate,
+        election_start_date: newElection.electionStartDate,
+        election_end_date: newElection.electionEndDate
+      });
+      
+      setElections([...elections, response.data]);
+      setCurrentElection(response.data);
+      handleCloseElectionModal();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to create election');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Analytics
-  const voterTurnoutRate = ((totalVotesCast / eligibleVoters) * 100).toFixed(1);
-  const votingPercentage = ((totalVotesCast / eligibleVoters) * 100).toFixed(1);
+  const voterTurnoutRate = eligibleVoters > 0 ? ((totalVotesCast / eligibleVoters) * 100).toFixed(1) : '0.0';
+  const votingPercentage = eligibleVoters > 0 ? ((totalVotesCast / eligibleVoters) * 100).toFixed(1) : '0.0';
 
   const downloadAuditLog = () => {
+    // In production, fetch audit logs from backend
     const csvContent = "data:text/csv;charset=utf-8," 
       + "Timestamp,Action,User,Details\n"
-      + auditLogs.map(log => `${log.timestamp},${log.action},${log.user},${log.details}`).join("\n");
+      + "No audit logs available";
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -292,16 +427,18 @@ export default function AdminDashboard() {
                     <div key={pos.id} className="mb-4 pb-4" style={{ borderBottom: "1px solid #e3e8ef" }}>
                       <div className="d-flex justify-content-between align-items-start">
                         <div>
-                          <h5 className="fw-bold mb-1">{pos.name}</h5>
+                          <h5 className="fw-bold mb-1">{pos.title}</h5>
                           <div style={{ fontSize: 14, color: "#666" }}>{pos.description}</div>
                           <div style={{ fontSize: 13, color: "#9e9e9e", marginTop: 6 }}>
-                            {pos.candidatesApproved}/{pos.candidatesTotal} candidates approved
+                            {pos.number_of_people} {pos.number_of_people === 1 ? 'seat' : 'seats'} available
                           </div>
+                          {pos.duration && (
+                            <div style={{ fontSize: 13, color: "#9e9e9e", marginTop: 2 }}>
+                              Duration: {pos.duration} years
+                            </div>
+                          )}
                         </div>
                         <div className="d-flex gap-2 align-items-center">
-                          <span className="badge bg-success" style={{ fontSize: 14, padding: "6px 14px", borderRadius: 10 }}>
-                            {pos.status.charAt(0).toUpperCase() + pos.status.slice(1)}
-                          </span>
                           <button 
                             className="btn btn-sm btn-danger"
                             onClick={() => handleDeletePosition(pos.id)}
