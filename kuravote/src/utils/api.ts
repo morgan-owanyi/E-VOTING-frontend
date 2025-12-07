@@ -84,7 +84,7 @@ api.interceptors.response.use(
 export const positionAPI = {
   // Get all positions
   getAll: async () => {
-    const response = await api.get('/positions');
+    const response = await api.get('/positions/');
     return response.data;
   },
 
@@ -102,7 +102,7 @@ export const positionAPI = {
     duration: string;
     caution: string;
   }) => {
-    const response = await api.post('/positions', positionData);
+    const response = await api.post('/positions/', positionData);
     return response.data;
   },
 
@@ -126,25 +126,25 @@ export const positionAPI = {
 export const voterAPI = {
   // Get all voters
   getAll: async () => {
-    const response = await api.get('/voters');
+    const response = await api.get('/voters/');
     return response.data;
   },
 
   // Add single voter
   addSingle: async (regNo: string) => {
-    const response = await api.post('/voters', { regNo });
+    const response = await api.post('/voters/', { regNo });
     return response.data;
   },
 
   // Import multiple voters
   importCSV: async (voters: string[]) => {
-    const response = await api.post('/voters/bulk', { voters });
+    const response = await api.post('/voters/bulk/', { voters });
     return response.data;
   },
 
   // Verify voter
   verify: async (regNo: string) => {
-    const response = await api.post('/voters/verify', { regNo });
+    const response = await api.post('/voters/verify/', { regNo });
     return response.data;
   },
 };
@@ -155,8 +155,12 @@ export const voterAPI = {
 
 export const authAPI = {
   // Login
-  login: async (credentials: { email: string; password: string; role: string }) => {
-    const response = await api.post('/auth/login', credentials);
+  login: async (credentials: { email: string; password: string; role?: string }) => {
+    // Don't send role to backend - just use email/password
+    const response = await api.post('/auth/login/', {
+      email: credentials.email,
+      password: credentials.password
+    });
     if (response.data.token) {
       localStorage.setItem('authToken', response.data.token);
     }
@@ -170,7 +174,7 @@ export const authAPI = {
     password: string;
     role: string;
   }) => {
-    const response = await api.post('/auth/register', userData);
+    const response = await api.post('/auth/register/', userData);
     return response.data;
   },
 
@@ -193,7 +197,7 @@ export const authAPI = {
 export const candidateAPI = {
   // Get all candidates
   getAll: async () => {
-    const response = await api.get('/candidates');
+    const response = await api.get('/candidates/');
     return response.data;
   },
 
@@ -204,7 +208,7 @@ export const candidateAPI = {
     email: string;
     message: string;
   }) => {
-    const response = await api.post('/candidates/apply', applicationData);
+    const response = await api.post('/candidates/apply/', applicationData);
     return response.data;
   },
 
@@ -228,25 +232,25 @@ export const candidateAPI = {
 export const votingAPI = {
   // Request OTP
   requestOTP: async (regNo: string) => {
-    const response = await api.post('/voting/request-otp', { regNo });
+    const response = await api.post('/voting/request-otp/', { regNo });
     return response.data;
   },
 
   // Verify OTP
   verifyOTP: async (regNo: string, otp: string) => {
-    const response = await api.post('/voting/verify-otp', { regNo, otp });
+    const response = await api.post('/voting/verify-otp/', { regNo, otp });
     return response.data;
   },
 
   // Cast vote
   castVote: async (votes: { [position: string]: string }) => {
-    const response = await api.post('/voting/cast', { votes });
+    const response = await api.post('/voting/cast/', { votes });
     return response.data;
   },
 
   // Get voting results
   getResults: async () => {
-    const response = await api.get('/voting/results');
+    const response = await api.get('/voting/results/');
     return response.data;
   },
 };
