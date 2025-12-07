@@ -16,8 +16,6 @@ export default function AdminDashboard() {
   const [showPositionModal, setShowPositionModal] = useState(false);
   const [showOfficerModal, setShowOfficerModal] = useState(false);
   const [showElectionModal, setShowElectionModal] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [newPosition, setNewPosition] = useState({
     title: "",
     description: "",
@@ -50,6 +48,7 @@ export default function AdminDashboard() {
       fetchPositions();
       fetchVoters();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentElection]);
 
   const fetchElections = async () => {
@@ -89,7 +88,6 @@ export default function AdminDashboard() {
   const fetchOfficers = async () => {
     try {
       // Fetch users with PRESIDING_OFFICER role
-      const response = await axios.get('/auth/user/');
       // For now, just set empty array - we need a proper endpoint to list all officers
       setOfficers([]);
     } catch (err) {
@@ -143,7 +141,6 @@ export default function AdminDashboard() {
       alert('Please create an election first');
       return;
     }
-    setLoading(true);
     try {
       await axios.post('/positions/', {
         election: currentElection.id,
@@ -156,9 +153,7 @@ export default function AdminDashboard() {
       fetchPositions();
       handleClosePositionModal();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create position');
-    } finally {
-      setLoading(false);
+      alert(err.response?.data?.message || 'Failed to create position');
     }
   };
 
@@ -196,7 +191,6 @@ export default function AdminDashboard() {
 
   const handleSubmitOfficer = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     try {
       await axios.post('/auth/register/', {
         username: newOfficer.email.split('@')[0],
@@ -217,9 +211,7 @@ export default function AdminDashboard() {
       }]);
       handleCloseOfficerModal();
     } catch (err: any) {
-      setError(err.response?.data?.message || err.response?.data?.email?.[0] || 'Failed to create officer');
-    } finally {
-      setLoading(false);
+      alert(err.response?.data?.message || err.response?.data?.email?.[0] || 'Failed to create officer');
     }
   };
 
@@ -227,16 +219,6 @@ export default function AdminDashboard() {
     if (window.confirm("Are you sure you want to dismiss this returning officer?")) {
       setOfficers(officers.filter(off => off.id !== id));
     }
-  };
-
-  const handleResetPassword = (officer: any) => {
-    const newPassword = 'Officer' + Math.random().toString(36).slice(-8);
-    alert(
-      `Password Reset for ${officer.name}\n\n` +
-      `Email: ${officer.email}\n` +
-      `New Temporary Password: ${newPassword}\n\n` +
-      `Please share this with the officer.`
-    );
   };
 
   // Election handlers
@@ -263,22 +245,19 @@ export default function AdminDashboard() {
     const elecEnd = new Date(newElection.electionEndDate);
     
     if (nomStart >= nomEnd) {
-      setError("Nomination end date must be after start date");
+      alert("Nomination end date must be after start date");
       return;
     }
     
     if (elecStart >= elecEnd) {
-      setError("Election end date must be after start date");
+      alert("Election end date must be after start date");
       return;
     }
     
     if (nomEnd >= elecStart) {
-      setError("Election start date must be after nomination end date");
+      alert("Election start date must be after nomination end date");
       return;
     }
-    
-    setLoading(true);
-    setError("");
     
     try {
       const response = await axios.post('/elections/', {
@@ -294,9 +273,7 @@ export default function AdminDashboard() {
       setCurrentElection(response.data);
       handleCloseElectionModal();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create election');
-    } finally {
-      setLoading(false);
+      alert(err.response?.data?.message || 'Failed to create election');
     }
   };
 
@@ -506,14 +483,11 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {auditLogs.map(log => (
-                        <tr key={log.id}>
-                          <td style={{ fontSize: 13 }}>{log.timestamp}</td>
-                          <td><span className="badge bg-info">{log.action}</span></td>
-                          <td style={{ fontSize: 13 }}>{log.user}</td>
-                          <td style={{ fontSize: 13, color: "#666" }}>{log.details}</td>
-                        </tr>
-                      ))}
+                      <tr>
+                        <td colSpan={4} className="text-center text-muted py-4">
+                          No audit logs available. This feature will be implemented in a future update.
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
@@ -688,8 +662,8 @@ export default function AdminDashboard() {
                       type="text"
                       className="form-control"
                       placeholder="e.g., Student Council Elections 2025"
-                      value={newElection.name}
-                      onChange={(e) => setNewElection({ ...newElection, name: e.target.value })}
+                      value={newElection.title}
+                      onChange={(e) => setNewElection({ ...newElection, title: e.target.value })}
                       required
                     />
                   </div>
