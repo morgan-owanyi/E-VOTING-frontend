@@ -1,24 +1,39 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/kuravote-black.png";
+import axios from "../utils/api";
 
 type Position = {
   id: string;
-  name: string;
+  title: string;
   description: string;
-  status: "open" | "closed";
+  number_of_people: number;
 };
-
-const openPositions: Position[] = [];
 
 export default function CandidateDashboard() {
   const navigate = useNavigate();
+  const [positions, setPositions] = useState<Position[]>([]);
   const [selectedPosition, setSelectedPosition] = useState<string>("");
   const [program, setProgram] = useState<string>("");
   const [message, setMessage] = useState("");
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [manifesto, setManifesto] = useState<File | null>(null);
-  const [documents, setDocuments] = useState<FileList | null>(null);
+  const [documents, setDocuments] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchPositions();
+  }, []);
+
+  const fetchPositions = async () => {
+    try {
+      const response = await axios.get('/positions/');
+      setPositions(response.data);
+    } catch (err: any) {
+      console.error('Failed to fetch positions:', err);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
@@ -39,15 +54,19 @@ export default function CandidateDashboard() {
   };
 
   const handleDocumentsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setDocuments(e.target.files);
+    if (e.target.files && e.target.files[0]) {
+      setDocuments(e.target.files[0]);
     }
   };
 
-  const handleApply = (e: React.FormEvent) => {
+  const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
+    if (!selectedPosition) {
+      alert("Please select a position");
+      return;
+    }
     if (!profilePhoto) {
       alert("Please upload your profile photo");
       return;
@@ -60,43 +79,46 @@ export default function CandidateDashboard() {
       alert("Please enter your program of study");
       return;
     }
-    if (!documents || documents.length === 0) {
-      alert("Please upload at least one verification document (Student ID or National ID)");
+    if (!documents) {
+      alert("Please upload verification documents");
       return;
     }
 
-    // In production, this would send files to backend via FormData
-    const formData = new FormData();
-    formData.append('position', selectedPosition);
-    formData.append('program', program);
-    formData.append('message', message);
-    formData.append('profilePhoto', profilePhoto);
-    formData.append('manifesto', manifesto);
-    if (documents) {
-      Array.from(documents).forEach((doc, index) => {
-        formData.append(`document_${index}`, doc);
-      });
-    }
+    setLoading(true);
+    setError("");
 
-    alert(
-      `Nomination submitted for "${selectedPosition}".\n` +
-      `Program: ${program}\n` +
-      `Profile Photo: ${profilePhoto.name}\n` +
-      `Manifesto: ${manifesto.name}\n` +
-      `Verification Documents: ${documents ? documents.length : 0}\n` +
-      `Returning officer notified (demo).`
-    );
-    
-    // Reset form
-    setSelectedPosition("");
-    setProgram("");
-    setMessage("");
-    setProfilePhoto(null);
-    setManifesto(null);
-    setDocuments(null);
-    // Reset file inputs
-    const form = e.target as HTMLFormElement;
-    form.reset();
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('position', selectedPosition);
+      formData.append('program', program);
+      formData.append('message', message);
+      formData.append('profile_photo', profilePhoto);
+      formData.append('manifesto', manifesto);
+      formData.append('verification_documents', documents);
+
+      await axios.post('/candidates/apply/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      alert('Application submitted successfully! Awaiting officer approval.');
+      
+      // Reset form
+      setSelectedPosition("");
+      setProgram("");
+      setMessage("");
+      setProfilePhoto(null);
+      setManifesto(null);
+      setDocuments(null);
+      const form = e.target as HTMLFormElement;
+      form.reset();
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.response?.data?.detail || 'Failed to submit application');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -112,6 +134,13 @@ export default function CandidateDashboard() {
       </nav>
       <div className="container mt-5">
         <h3 className="fw-bold mb-4">Apply for Open Positions</h3>
+        
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
+        
         <form className="card p-4 mb-4" style={{ maxWidth: 600, margin: "0 auto" }} onSubmit={handleApply}>
           
           {/* Position Selection */}
@@ -122,10 +151,11 @@ export default function CandidateDashboard() {
               value={selectedPosition}
               onChange={e => setSelectedPosition(e.target.value)}
               required
+              disabled={loading}
             >
               <option value="">-- select position --</option>
-              {openPositions.map(pos =>
-                <option key={pos.id} value={pos.name}>{pos.name}</option>
+              {positions.map(pos =>
+                <option key={pos.id} value={pos.id}>{pos.title}</option>
               )}
             </select>
           </div>
@@ -155,6 +185,7 @@ export default function CandidateDashboard() {
               accept="image/*"
               onChange={handleProfilePhotoChange}
               required
+              disabled={loading}
             />
             <small className="form-text text-muted">
               Upload a professional photo (JPG, PNG). Max 5MB
@@ -175,6 +206,7 @@ export default function CandidateDashboard() {
               accept=".pdf,.doc,.docx"
               onChange={handleManifestoChange}
               required
+              disabled={loading}
             />
             <small className="form-text text-muted">
               Upload your manifesto (PDF, DOC, DOCX). Max 10MB
@@ -209,27 +241,22 @@ export default function CandidateDashboard() {
               type="file"
               className="form-control"
               accept=".pdf,.jpg,.jpeg,.png"
-              multiple
               onChange={handleDocumentsChange}
               required
+              disabled={loading}
             />
             <small className="form-text text-muted">
-              Upload verification documents: Student ID, National ID, or any official identification (Required)
+              Upload verification document: Student ID, National ID, or any official identification (Required)
             </small>
-            {documents && documents.length > 0 && (
-              <div className="mt-2">
-                <strong>{documents.length} file(s) selected:</strong>
-                <ul className="mb-0 mt-1">
-                  {Array.from(documents).map((doc, idx) => (
-                    <li key={idx} className="text-success">{doc.name}</li>
-                  ))}
-                </ul>
+            {documents && (
+              <div className="mt-2 text-success">
+                <i className="bi bi-check-circle"></i> {documents.name}
               </div>
             )}
           </div>
 
-          <button className="btn btn-success w-100" style={{ padding: "12px", fontSize: "16px", fontWeight: 500 }}>
-            Submit Nomination
+          <button className="btn btn-success w-100" style={{ padding: "12px", fontSize: "16px", fontWeight: 500 }} disabled={loading}>
+            {loading ? 'Submitting...' : 'Submit Nomination'}
           </button>
         </form>
       </div>
