@@ -22,7 +22,7 @@ const Register: React.FC = () => {
 
     try {
       await authAPI.register({
-        name,
+        username,
         email,
         password,
         role: "CANDIDATE" // Default to candidate for registration page

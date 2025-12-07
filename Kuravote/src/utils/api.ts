@@ -169,12 +169,15 @@ export const authAPI = {
 
   // Register
   register: async (userData: {
-    name: string;
+    username: string;
     email: string;
     password: string;
     role: string;
   }) => {
     const response = await api.post('/auth/register/', userData);
+    if (response.data.token) {
+      localStorage.setItem('authToken', response.data.token);
+    }
     return response.data;
   },
 
