@@ -231,20 +231,20 @@ export const candidateAPI = {
 
 export const votingAPI = {
   // Request OTP
-  requestOTP: async (regNo: string) => {
-    const response = await api.post('/voting/request-otp/', { regNo });
+  requestOTP: async (regNo: string, election: number) => {
+    const response = await api.post('/voting/request-otp/', { regNo, election });
     return response.data;
   },
 
   // Verify OTP
-  verifyOTP: async (regNo: string, otp: string) => {
-    const response = await api.post('/voting/verify-otp/', { regNo, otp });
+  verifyOTP: async (regNo: string, otp: string, election: number) => {
+    const response = await api.post('/voting/verify-otp/', { regNo, otp, election });
     return response.data;
   },
 
   // Cast vote
-  castVote: async (votes: { [position: string]: string }) => {
-    const response = await api.post('/voting/cast/', { votes });
+  castVote: async (votes: { [position: string]: string }, regNo: string, election: number) => {
+    const response = await api.post('/voting/cast/', { votes, regNo, election });
     return response.data;
   },
 

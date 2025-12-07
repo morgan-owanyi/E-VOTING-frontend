@@ -14,6 +14,7 @@ export default function Login() {
   const [voterStep, setVoterStep] = useState<"reg" | "otp" | "vote">("reg");
   const [voterRegNo, setVoterRegNo] = useState<string>("");
   const [voterOtp, setVoterOtp] = useState<string>("");
+  const [activeElection, setActiveElection] = useState<any>(null);
   const [selectedVotes, setSelectedVotes] = useState<{ [position: string]: string }>({});
   const [positionGroups, setPositionGroups] = useState<PositionGroup[]>([]);
   const [email, setEmail] = useState<string>("");
@@ -26,7 +27,7 @@ export default function Login() {
   const handleVote = async (position: string, candidateId: string) => {
     try {
       setSelectedVotes(prev => ({ ...prev, [position]: candidateId }));
-      await votingAPI.castVote({ [position]: candidateId });
+      await votingAPI.castVote({ [position]: candidateId }, voterRegNo, activeElection?.id);
       alert("Thank you for voting!");
       navigate("/");
     } catch (err: any) {
@@ -76,10 +77,32 @@ export default function Login() {
     setError("");
 
     try {
-      await votingAPI.requestOTP(voterRegNo);
+      // First, get the active election
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000/api'}/elections/`);
+      const elections = await response.json();
+      
+      // Find an active election (you can add logic to filter by date or status)
+      const active = elections.find((e: any) => new Date(e.election_start) <= new Date() && new Date(e.election_end) >= new Date()) || elections[0];
+      
+      if (!active) {
+        setError("No active election found.");
+        setLoading(false);
+        return;
+      }
+      
+      setActiveElection(active);
+      
+      await votingAPI.requestOTP(voterRegNo, active.id);
       setVoterStep("otp");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to request OTP");
+      const errorMessage = err.response?.data?.message || err.response?.data?.error;
+      
+      // Check if voter is not eligible
+      if (err.response?.status === 404 || errorMessage?.toLowerCase().includes('not found') || errorMessage?.toLowerCase().includes('not eligible')) {
+        setError("You are currently not eligible to vote. Eligible voters are uploaded by the admin via CSV file or single input.");
+      } else {
+        setError(errorMessage || "Failed to request OTP");
+      }
     } finally {
       setLoading(false);
     }
@@ -91,31 +114,41 @@ export default function Login() {
     setError("");
 
     try {
-      await votingAPI.verifyOTP(voterRegNo, voterOtp);
+      await votingAPI.verifyOTP(voterRegNo, voterOtp, activeElection?.id);
       
-      // Fetch candidates for voting
+      // Fetch approved candidates for voting
       const candidates = await candidateAPI.getAll();
-      // Group candidates by position
-      const grouped = candidates.reduce((acc: PositionGroup[], cand: any) => {
-        const existing = acc.find(g => g.position === cand.position);
+      
+      // Filter only approved candidates and group by position
+      const approvedCandidates = candidates.filter((cand: any) => cand.status === 'approved');
+      
+      const grouped = approvedCandidates.reduce((acc: PositionGroup[], cand: any) => {
+        const positionTitle = cand.position?.title || cand.position;
+        const existing = acc.find(g => g.position === positionTitle);
+        
         if (existing) {
           existing.candidates.push({
             id: cand.id,
-            name: cand.name,
-            img: cand.profilePhoto || candidate1
+            name: cand.user?.first_name || cand.name,
+            img: cand.profile_photo || candidate1
           });
         } else {
           acc.push({
-            position: cand.position,
+            position: positionTitle,
             candidates: [{
               id: cand.id,
-              name: cand.name,
-              img: cand.profilePhoto || candidate1
+              name: cand.user?.first_name || cand.name,
+              img: cand.profile_photo || candidate1
             }]
           });
         }
         return acc;
       }, []);
+      
+      if (grouped.length === 0) {
+        setError("No approved candidates available for voting at this time.");
+        return;
+      }
       
       setPositionGroups(grouped);
       setVoterStep("vote");
