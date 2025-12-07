@@ -1,15 +1,40 @@
-import React, { FormEvent } from "react";
+import React, { FormEvent, useState } from "react";
 import logo from "../assets/kuravote-black.png";
 import bg from "../assets/vote.png";
 import { useNavigate } from "react-router-dom";
+import { authAPI } from "../utils/api";
 
 const Register: React.FC = () => {
   const navigate = useNavigate();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // Implement registration logic here
-    navigate("/login");
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      await authAPI.register({
+        name,
+        email,
+        password,
+        role: "CANDIDATE" // Default to candidate for registration page
+      });
+      
+      setSuccess("Registration successful! Redirecting to login...");
+      setTimeout(() => navigate("/login"), 2000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || err.response?.data?.email?.[0] || err.response?.data?.username?.[0] || "Registration failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -40,8 +65,8 @@ const Register: React.FC = () => {
             </div>
           </div>
           <div>
-            <a href="/" className="nav-link d-inline" style={{ marginRight: 25 }}>Home</a>
-            <a href="/login" className="nav-link d-inline" style={{ marginRight: 25 }}>Login</a>
+            <button className="btn btn-link nav-link d-inline" onClick={() => navigate('/')} style={{ marginRight: 25 }}>Home</button>
+            <button className="btn btn-link nav-link d-inline" onClick={() => navigate('/login')} style={{ marginRight: 25 }}>Login</button>
           </div>
         </div>
       </nav>
@@ -50,29 +75,42 @@ const Register: React.FC = () => {
           width: 375, borderRadius: 15, boxShadow: "0 4px 32px 0 rgb(62 72 100 / 16%)"
         }}>
           <h5 className="text-center mt-2 mb-2">Candidate Registration</h5>
+          
+          {error && (
+            <div className="alert alert-danger" role="alert">
+              {error}
+            </div>
+          )}
+          
+          {success && (
+            <div className="alert alert-success" role="alert">
+              {success}
+            </div>
+          )}
+          
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
               <label className="form-label">Full Name</label>
-              <input type="text" className="form-control" placeholder="Enter your full name" required />
+              <input type="text" className="form-control" placeholder="Enter your full name" 
+                value={name} onChange={e => setName(e.target.value)} required disabled={loading} />
+            </div>
+            <div className="mb-3">
+              <label className="form-label">Username</label>
+              <input type="text" className="form-control" placeholder="Choose a username" 
+                value={username} onChange={e => setUsername(e.target.value)} required disabled={loading} />
             </div>
             <div className="mb-3">
               <label className="form-label">Email</label>
-              <input type="email" className="form-control" placeholder="Enter your email" required />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Registration number</label>
-              <input type="text" className="form-control" placeholder="Enter registration number" required />
-            </div>
-            <div className="mb-3">
-              <label className="form-label">Program</label>
-              <input type="text" className="form-control" placeholder="Enter your program here" required />
+              <input type="email" className="form-control" placeholder="Enter your email" 
+                value={email} onChange={e => setEmail(e.target.value)} required disabled={loading} />
             </div>
             <div className="mb-3">
               <label className="form-label">Password</label>
-              <input type="password" className="form-control" placeholder="Create your password" required />
+              <input type="password" className="form-control" placeholder="Create your password" 
+                value={password} onChange={e => setPassword(e.target.value)} required disabled={loading} />
             </div>
-            <button type="submit" className="btn btn-primary w-100" style={{ background: "#243b5c", fontWeight: 500 }}>
-              Register
+            <button type="submit" className="btn btn-primary w-100" style={{ background: "#243b5c", fontWeight: 500 }} disabled={loading}>
+              {loading ? "Registering..." : "Register"}
             </button>
           </form>
         </div>

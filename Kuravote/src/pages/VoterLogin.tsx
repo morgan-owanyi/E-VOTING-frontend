@@ -86,6 +86,10 @@ export default function VoterLogin() {
               </span>
             </div>
           </div>
+          <div>
+            <button className="btn btn-outline-primary me-2" onClick={() => navigate('/')}>Home</button>
+            <button className="btn btn-primary" onClick={() => { localStorage.clear(); navigate('/'); }}>Logout</button>
+          </div>
         </div>
       </nav>
 

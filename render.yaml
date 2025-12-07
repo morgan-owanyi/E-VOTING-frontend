@@ -2,8 +2,8 @@ services:
   - type: web
     name: kuravote-frontend
     runtime: node
-    buildCommand: cd kuravote && npm install && npm run build
-    staticPublishPath: ./kuravote/build
+    buildCommand: cd Kuravote && npm install --legacy-peer-deps && npm run build
+    staticPublishPath: Kuravote/build
     envVars:
       - key: NODE_VERSION
         value: 18

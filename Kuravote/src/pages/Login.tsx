@@ -3,17 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/kuravote-black.png";
 import voteicon from "../assets/vote.png";
 import candidate1 from "../assets/candidate1.jpg";
+import { authAPI, votingAPI, candidateAPI } from "../utils/api";
 
 type Role = "admin" | "officer" | "candidate" | "voter";
 interface Candidate { id: string; name: string; img: string; }
 interface PositionGroup { position: string; candidates: Candidate[]; }
-
-const positionGroups: PositionGroup[] = [
-  { position: "President", candidates: [
-    { id: "1", name: "Samuel Akot", img: candidate1 },
-    { id: "2", name: "Jane Doe", img: candidate1 }
-  ] }
-];
 
 export default function Login() {
   const [role, setRole] = useState<Role>("admin");
@@ -21,36 +15,115 @@ export default function Login() {
   const [voterRegNo, setVoterRegNo] = useState<string>("");
   const [voterOtp, setVoterOtp] = useState<string>("");
   const [selectedVotes, setSelectedVotes] = useState<{ [position: string]: string }>({});
+  const [positionGroups, setPositionGroups] = useState<PositionGroup[]>([]);
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
-  const [candidateRegNo, setCandidateRegNo] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
 
   const navigate = useNavigate();
 
-  const handleVote = (position: string, candidateId: string) => {
-    setSelectedVotes(prev => ({ ...prev, [position]: candidateId }));
-    setTimeout(() => {
+  const handleVote = async (position: string, candidateId: string) => {
+    try {
+      setSelectedVotes(prev => ({ ...prev, [position]: candidateId }));
+      await votingAPI.castVote({ [position]: candidateId });
       alert("Thank you for voting!");
       navigate("/");
-    }, 1000);
+    } catch (err: any) {
+      alert("Failed to cast vote: " + (err.response?.data?.message || err.message));
+    }
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (role === "admin")  { navigate("/admin"); }
-    else if (role === "officer") { navigate("/officer"); }
-    else if (role === "candidate") { navigate("/candidate"); }
-    else if (role === "voter") { setVoterStep("reg"); }
+    setLoading(true);
+    setError("");
+
+    try {
+      // Map frontend roles to backend roles
+      const roleMap: { [key: string]: string } = {
+        admin: "ADMIN",
+        officer: "PRESIDING_OFFICER",
+        candidate: "CANDIDATE",
+        voter: "VOTER"
+      };
+
+      const response = await authAPI.login({
+        email,
+        password,
+        role: roleMap[role]
+      });
+
+      // Store user data
+      localStorage.setItem("userRole", role);
+      localStorage.setItem("userEmail", email);
+
+      // Navigate based on role
+      if (role === "admin") navigate("/admin");
+      else if (role === "officer") navigate("/officer");
+      else if (role === "candidate") navigate("/candidate");
+      else if (role === "voter") setVoterStep("reg");
+    } catch (err: any) {
+      setError(err.response?.data?.error || err.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleVoterRegSubmit = (e: FormEvent) => {
+  const handleVoterRegSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setVoterStep("otp");
+    setLoading(true);
+    setError("");
+
+    try {
+      await votingAPI.requestOTP(voterRegNo);
+      setVoterStep("otp");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to request OTP");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleVoterOtpSubmit = (e: FormEvent) => {
+  const handleVoterOtpSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setVoterStep("vote");
+    setLoading(true);
+    setError("");
+
+    try {
+      await votingAPI.verifyOTP(voterRegNo, voterOtp);
+      
+      // Fetch candidates for voting
+      const candidates = await candidateAPI.getAll();
+      // Group candidates by position
+      const grouped = candidates.reduce((acc: PositionGroup[], cand: any) => {
+        const existing = acc.find(g => g.position === cand.position);
+        if (existing) {
+          existing.candidates.push({
+            id: cand.id,
+            name: cand.name,
+            img: cand.profilePhoto || candidate1
+          });
+        } else {
+          acc.push({
+            position: cand.position,
+            candidates: [{
+              id: cand.id,
+              name: cand.name,
+              img: cand.profilePhoto || candidate1
+            }]
+          });
+        }
+        return acc;
+      }, []);
+      
+      setPositionGroups(grouped);
+      setVoterStep("vote");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to verify OTP");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -98,26 +171,26 @@ export default function Login() {
                 {role === "admin" ? "Admin" : role === "officer" ? "Returning Officer" : "Candidate"}
               </h5>
               <div className="text-center mb-3" style={{ color: "#555" }}>Sign in to continue</div>
+              
+              {error && (
+                <div className="alert alert-danger" role="alert">
+                  {error}
+                </div>
+              )}
+              
               <form onSubmit={handleSubmit}>
                 <div className="mb-3">
                   <label className="form-label">Email</label>
                   <input type="email" className="form-control" placeholder="Enter your email"
-                    value={email} required onChange={e => setEmail(e.target.value)} />
+                    value={email} required onChange={e => setEmail(e.target.value)} disabled={loading} />
                 </div>
-                {role === "candidate" && (
-                  <div className="mb-3">
-                    <label className="form-label">Registration number</label>
-                    <input type="text" className="form-control" placeholder="Enter registration number"
-                      value={candidateRegNo} required onChange={e => setCandidateRegNo(e.target.value)} />
-                  </div>
-                )}
                 <div className="mb-3">
                   <label className="form-label">Password</label>
                   <input type="password" className="form-control" placeholder="Input your password here"
-                    value={password} required onChange={e => setPassword(e.target.value)} />
+                    value={password} required onChange={e => setPassword(e.target.value)} disabled={loading} />
                 </div>
-                <button type="submit" className="btn btn-primary w-100" style={{ background: "#243b5c", fontWeight: 500 }}>
-                  Sign In
+                <button type="submit" className="btn btn-primary w-100" style={{ background: "#243b5c", fontWeight: 500 }} disabled={loading}>
+                  {loading ? "Signing in..." : "Sign In"}
                 </button>
               </form>
             </>
@@ -131,14 +204,21 @@ export default function Login() {
                 <h5 className="fw-bold mt-2">Cast your vote</h5>
                 <div>Input your registration number to continue</div>
               </div>
+              
+              {error && (
+                <div className="alert alert-danger" role="alert">
+                  {error}
+                </div>
+              )}
+              
               <div className="mb-3">
                 <label className="form-label">Registration no:</label>
                 <input type="text" className="form-control" placeholder="Enter your registration number here:"
-                  value={voterRegNo} required onChange={e => setVoterRegNo(e.target.value)} />
+                  value={voterRegNo} required onChange={e => setVoterRegNo(e.target.value)} disabled={loading} />
               </div>
               <button type="submit" className="btn w-100"
-                style={{ background: "#243b5c", color: "white", fontWeight: 500, fontSize: 18 }}>
-                Continue
+                style={{ background: "#243b5c", color: "white", fontWeight: 500, fontSize: 18 }} disabled={loading}>
+                {loading ? "Requesting OTP..." : "Continue"}
               </button>
             </form>
           )}
@@ -147,22 +227,26 @@ export default function Login() {
               <div className="text-center mb-3">
                 <img src={voteicon} alt="Vote OTP" style={{ width: 54, marginBottom: 8 }} />
                 <h5 className="fw-bold mt-2">Cast your vote</h5>
-                <div>Input your registration number to continue</div>
+                <div>Input your OTP code to continue</div>
               </div>
+              
+              {error && (
+                <div className="alert alert-danger" role="alert">
+                  {error}
+                </div>
+              )}
+              
               <div className="mb-3">
                 <label className="form-label">Input OTP code:</label>
                 <input type="text" className="form-control" placeholder="Input OTP"
-                  value={voterOtp} required onChange={e => setVoterOtp(e.target.value)} />
+                  value={voterOtp} required onChange={e => setVoterOtp(e.target.value)} disabled={loading} />
               </div>
               <div style={{ fontSize: 14, color: "#667", marginBottom: 7 }}>
                 <b>NB:</b> <span style={{ color: "#888" }}>This code can only be used once, make your vote count!</span>
               </div>
-              <div>
-                <Link to="#" style={{ fontSize: 14, color: "#18605e", textDecoration: "underline" }}>Didn't receive one?</Link>
-              </div>
               <button type="submit" className="btn w-100 mt-2"
-                style={{ background: "#243b5c", color: "white", fontWeight: 500, fontSize: 18 }}>
-                Continue
+                style={{ background: "#243b5c", color: "white", fontWeight: 500, fontSize: 18 }} disabled={loading}>
+                {loading ? "Verifying..." : "Continue"}
               </button>
             </form>
           )}
