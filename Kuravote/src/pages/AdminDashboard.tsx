@@ -203,26 +203,39 @@ export default function AdminDashboard() {
 
   const handleSubmitOfficer = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Generate secure random password
+    const generatePassword = () => {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789@#$%';
+      let password = '';
+      for (let i = 0; i < 12; i++) {
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return password;
+    };
+    
+    const tempPassword = generatePassword();
+    
     try {
       // Generate username from name (remove spaces and special chars)
       const username = newOfficer.name.replace(/\s+/g, '').toLowerCase() + Math.floor(Math.random() * 1000);
       
-      await axios.post('/auth/register/', {
+      const response = await axios.post('/auth/register/', {
         username: username,
         email: newOfficer.email,
-        password: newOfficer.password,
+        password: tempPassword,
         first_name: newOfficer.name,
         role: 'PRESIDING_OFFICER'
       });
       
-      // Show password to admin
-      alert(`Officer created!\n\nName: ${newOfficer.name}\nEmail: ${newOfficer.email}\nTemporary Password: ${newOfficer.password}\n\nPlease save these credentials and share with the officer.`);
+      // Show success message
+      alert(`Officer created successfully!\n\nLogin credentials have been sent to ${newOfficer.email}\n\nName: ${newOfficer.name}\nEmail: ${newOfficer.email}\nPassword: ${tempPassword}\n\nPlease also save these credentials as backup.`);
       
       setOfficers([...officers, {
-        id: `o${officers.length + 1}`,
+        id: response.data.user?.id || `o${officers.length + 1}`,
         name: newOfficer.name,
         email: newOfficer.email,
-        tempPassword: newOfficer.password
+        tempPassword: tempPassword
       }]);
       handleCloseOfficerModal();
     } catch (err: any) {
