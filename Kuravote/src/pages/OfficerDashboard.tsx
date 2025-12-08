@@ -51,7 +51,8 @@ export default function OfficerDashboard() {
     if (!window.confirm('Approve this candidate?')) return;
     
     try {
-      await axios.post(`/candidates/${id}/approve/`);
+      await axios.put(`/candidates/${id}/approve/`);
+      alert('Candidate approved successfully!');
       fetchNominations(); // Refresh list
     } catch (err: any) {
       alert('Failed to approve: ' + (err.response?.data?.message || err.message));
@@ -63,7 +64,8 @@ export default function OfficerDashboard() {
     if (!reason) return;
     
     try {
-      await axios.post(`/candidates/${id}/reject/`, { reason });
+      await axios.put(`/candidates/${id}/reject/`, { reason });
+      alert('Candidate rejected successfully!');
       fetchNominations(); // Refresh list
     } catch (err: any) {
       alert('Failed to reject: ' + (err.response?.data?.message || err.message));
