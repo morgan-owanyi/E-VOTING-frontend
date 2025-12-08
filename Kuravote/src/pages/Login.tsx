@@ -92,7 +92,13 @@ export default function Login() {
       
       setActiveElection(active);
       
-      await votingAPI.requestOTP(voterRegNo, active.id);
+      const otpResponse = await votingAPI.requestOTP(voterRegNo, active.id);
+      
+      // If OTP is returned in response (when email fails), show it to user
+      if (otpResponse.data.otp) {
+        alert(`Email service unavailable.\n\nYour OTP is: ${otpResponse.data.otp}\n\nNote: ${otpResponse.data.note || 'Use this OTP to continue voting'}`);
+      }
+      
       setVoterStep("otp");
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.response?.data?.error;
