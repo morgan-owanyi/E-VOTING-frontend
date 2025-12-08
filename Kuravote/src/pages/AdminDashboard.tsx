@@ -124,7 +124,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleImportCSV = async (regNos: string[]) => {
+  const handleImportCSV = async (voters: Array<{registration_number: string, email: string}>) => {
     if (!currentElection) {
       alert('Please create an election first');
       return;
@@ -132,8 +132,9 @@ export default function AdminDashboard() {
     try {
       await axios.post('/voters/bulk_create/', {
         election: currentElection.id,
-        voters: regNos
+        voters: voters
       });
+      alert(`Successfully imported ${voters.length} voters`);
       fetchVoters();
     } catch (err: any) {
       alert('Failed to import voters: ' + (err.response?.data?.message || err.message));
