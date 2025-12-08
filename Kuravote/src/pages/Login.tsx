@@ -14,6 +14,7 @@ export default function Login() {
   const [voterStep, setVoterStep] = useState<"reg" | "otp" | "vote">("reg");
   const [voterRegNo, setVoterRegNo] = useState<string>("");
   const [voterOtp, setVoterOtp] = useState<string>("");
+  const [displayedOtp, setDisplayedOtp] = useState<string>("");
   const [activeElection, setActiveElection] = useState<any>(null);
   const [selectedVotes, setSelectedVotes] = useState<{ [position: string]: string }>({});
   const [positionGroups, setPositionGroups] = useState<PositionGroup[]>([]);
@@ -96,7 +97,9 @@ export default function Login() {
       
       // If OTP is returned in response (when email fails), show it to user
       if (otpResponse.data.otp) {
-        alert(`Email service unavailable.\n\nYour OTP is: ${otpResponse.data.otp}\n\nNote: ${otpResponse.data.note || 'Use this OTP to continue voting'}`);
+        setDisplayedOtp(otpResponse.data.otp);
+      } else {
+        setDisplayedOtp("");
       }
       
       setVoterStep("otp");
@@ -272,6 +275,57 @@ export default function Login() {
               {error && (
                 <div className="alert alert-danger" role="alert">
                   {error}
+                </div>
+              )}
+              
+              {!displayedOtp && !error && (
+                <div className="alert alert-success" role="alert" style={{ fontSize: 14 }}>
+                  ✅ OTP has been sent to your registered email address. Please check your inbox.
+                </div>
+              )}
+              
+              {displayedOtp && (
+                <div className="alert alert-warning" role="alert" style={{ 
+                  backgroundColor: "#fff3cd", 
+                  borderColor: "#ffc107", 
+                  borderWidth: 2,
+                  fontSize: 15
+                }}>
+                  <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                    ⚠️ Email Service Unavailable
+                  </div>
+                  <div style={{ marginBottom: 8 }}>
+                    Your OTP code is:
+                  </div>
+                  <div style={{ 
+                    fontSize: 32, 
+                    fontWeight: 700, 
+                    letterSpacing: 8,
+                    textAlign: "center",
+                    color: "#243b5c",
+                    padding: "10px 0",
+                    backgroundColor: "#fff",
+                    borderRadius: 8,
+                    marginBottom: 8
+                  }}>
+                    {displayedOtp}
+                  </div>
+                  <div className="text-center mb-2">
+                    <button 
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary"
+                      onClick={() => {
+                        navigator.clipboard.writeText(displayedOtp);
+                        alert("OTP copied to clipboard!");
+                      }}
+                      style={{ fontSize: 13 }}
+                    >
+                      📋 Copy OTP
+                    </button>
+                  </div>
+                  <small style={{ color: "#856404" }}>
+                    Please copy this code and enter it below to continue voting.
+                  </small>
                 </div>
               )}
               
